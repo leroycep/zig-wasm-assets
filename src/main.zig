@@ -16,22 +16,49 @@ comptime {
     }).run();
 }
 
-var main_task: @Frame(asyncMain) = undefined;
-pub fn main() anyerror!void {
-    main_task = async asyncMain();
+//var main_task: @Frame(asyncMain) = undefined;
+//pub fn main() anyerror!void {
+//    main_task = async asyncMain();
+//}
+
+//var loader: Loader(TextFiles.load_text_files) = undefined;
+var loading_complete: bool = false;
+var loading_frame: @Frame(load_text_files) = undefined;
+var text_files_opt: ?TextFiles = undefined;
+var finished: bool = false;
+export fn init() void {
+    loading_frame = async load_text_files();
 }
 
-pub fn asyncMain() anyerror!void {
-    std.log.info("All your codebase are belong to us.", .{});
+export fn update() void {
+    if (finished) return;
+    if (text_files_opt) |*text_files| {
+        defer finished = true;
 
+        //var text_files = nosuspend await loading_frame;
+        defer text_files.deinit();
+
+        std.log.info("contents of file: {s}", .{text_files.hello});
+        std.log.info("contents of world file: {s}", .{text_files.world});
+    }
+}
+
+const TextFiles = struct {
+    hello: []const u8,
+    world: []const u8,
+
+    fn deinit(this: *@This()) void {
+        allocator.free(this.hello);
+        allocator.free(this.world);
+    }
+};
+
+fn load_text_files() void {
     var hello_fetch = async env.fetch("hello.txt");
     var world_fetch = async env.fetch("world.txt");
 
-    const hello_contents = try await hello_fetch;
-    defer allocator.free(hello_contents);
-    const world_contents = try await world_fetch;
-    defer allocator.free(world_contents);
-
-    std.log.info("contents of file: {s}", .{hello_contents});
-    std.log.info("contents of world file: {s}", .{world_contents});
+    text_files_opt = TextFiles{
+        .hello = await hello_fetch,
+        .world = await world_fetch,
+    };
 }
