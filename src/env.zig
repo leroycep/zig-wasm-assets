@@ -45,3 +45,6 @@ pub fn panic(msg: []const u8, stacktrace: ?*std.builtin.StackTrace) noreturn {
         @breakpoint();
     }
 }
+
+pub extern fn reject_promise(promise_id: usize, errorno: usize) void;
+pub extern fn resolve_promise(promise_id: usize, ptr: [*]u8, len: usize) void;
