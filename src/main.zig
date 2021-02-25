@@ -64,20 +64,18 @@ fn load_text_files() !TextFiles {
 
 var reverse_frame: @Frame(reverse_file_internal) = undefined;
 export fn reverse_file(js_promise_id: usize, str_ptr: [*]const u8, str_len: usize) void {
-    std.log.info("first layer promise {}, {s}", .{ js_promise_id, str_ptr[0..str_len] });
     reverse_frame = async reverse_file_internal(js_promise_id, str_ptr, str_len);
 }
 
 fn reverse_file_internal(js_promise_id: usize, str_ptr: [*]const u8, str_len: usize) void {
-    std.log.info("promise {}, {s}", .{ js_promise_id, str_ptr[0..str_len] });
     var fetch_frame = async env.fetch(str_ptr[0..str_len]);
 
     const const_content = (await fetch_frame) catch |err| {
-        env.reject_promise(js_promise_id, 1);
+        env.reject_promise(js_promise_id, @errorToInt(err));
         return;
     };
     const content = std.mem.dupe(allocator, u8, const_content) catch |err| {
-        env.reject_promise(js_promise_id, 2);
+        env.reject_promise(js_promise_id, @errorToInt(err));
         return;
     };
 

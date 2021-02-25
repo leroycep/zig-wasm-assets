@@ -1,17 +1,41 @@
 const std = @import("std");
 
-extern fn do_fetch(filename_ptr: [*]const u8, filename_len: usize, cb: *c_void, data_out: *[]u8) void;
+extern fn do_fetch(filename_ptr: [*]const u8, filename_len: usize, cb: *c_void, data_out: *FetchError![]u8) void;
 
-pub fn fetch(file_name: []const u8) ![]const u8 {
-    var data: []u8 = undefined;
+export const ERROR_NOT_FOUND: usize = @errorToInt(FetchError.NotFound);
+export const ERROR_OUT_OF_MEMORY: usize = @errorToInt(FetchError.OutOfMemory);
+
+const FetchError = error {
+    NotFound,
+    OutOfMemory,
+};
+
+pub fn fetch(file_name: []const u8) FetchError![]const u8 {
+    var data: FetchError![]u8 = undefined;
     suspend do_fetch(file_name.ptr, file_name.len, @frame(), &data);
     return data;
 }
 
-export fn _finalize_fetch(cb_void: *c_void, data_out: *[]u8, buffer: [*]u8, len: usize) void {
+export fn _finalize_fetch(cb_void: *c_void, data_out: *FetchError![]u8, buffer: [*]u8, len: usize) void {
     const cb = @ptrCast(anyframe, @alignCast(8, cb_void));
     data_out.* = buffer[0..len];
     resume cb;
+}
+
+export fn _fail_fetch(cb_void: *c_void, data_out: *FetchError![]u8, errno: std.meta.Int(.unsigned, @sizeOf(anyerror) * 8)) void {
+    const cb = @ptrCast(anyframe, @alignCast(8, cb_void));
+    data_out.* = switch (@intToError(errno)) {
+        error.NotFound, error.OutOfMemory => |e| e,
+        else => unreachable,
+    };
+    resume cb;
+}
+
+export fn error_name_ptr(errno: std.meta.Int(.unsigned, @sizeOf(anyerror) * 8)) [*]const u8 {
+    return @errorName(@intToError(errno)).ptr;
+}
+export fn error_name_len(errno: std.meta.Int(.unsigned, @sizeOf(anyerror) * 8)) usize {
+    return @errorName(@intToError(errno)).len;
 }
 
 extern fn console_log_write(str_ptr: [*]const u8, str_len: usize) void;
