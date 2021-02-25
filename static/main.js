@@ -51,5 +51,7 @@ fetch("zig-wasm-assets.wasm")
     .then((instance) => {
         globalInstance = instance;
 
-        instance.exports._start();
+        instance.exports.init();
+        var interval = null;
+        interval = window.setInterval(instance.exports.update, 1000);
     });

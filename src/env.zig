@@ -34,7 +34,7 @@ pub fn log(
 ) void {
     const writer = consoleLogWriter();
     defer console_log_flush();
-    writer.print("{s}: {s}: ", .{ std.meta.tagName(message_level), std.meta.tagName(scope) }) catch {};
+    writer.print("[{s}][{s}] ", .{ std.meta.tagName(message_level), std.meta.tagName(scope) }) catch {};
     writer.print(format, args) catch {};
 }
 
