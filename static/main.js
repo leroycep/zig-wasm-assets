@@ -74,12 +74,18 @@ let env = {
                 }
             );
     },
-    reject_promise: (id, errno) => js_promises[id].reject(errno),
+    reject_promise: (id, errno) => {
+        js_promises[id].reject(errno);
+        open_js_promise_ids.push(id);
+        delete js_promises[id];
+    },
     resolve_promise: (id, ptr, len) => {
         const res = utf8decoder.decode(
             new Uint8Array(getMemory().buffer, ptr, len)
         );
         js_promises[id].resolve(res);
+        open_js_promise_ids.push(id);
+        delete js_promises[id];
     },
 };
 
@@ -137,6 +143,14 @@ fetch("zig-wasm-assets.wasm")
             },
             (errno) => {
                 console.error("Failed to reverse 'stuff.txt':", getErrorName(errno));
+            }
+        );
+        getReversed("world.txt").then(
+            (reversed_string) => {
+                console.log("Got reversed string! ", reversed_string);
+            },
+            (errno) => {
+                console.error("Failed to reverse 'world.txt':", getErrorName(errno));
             }
         );
     });

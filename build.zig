@@ -1,5 +1,4 @@
 const Builder = @import("std").build.Builder;
-const deps = @import("deps.zig");
 
 pub fn build(b: *Builder) void {
     // Standard release options allow the person running `zig build` to select
@@ -7,7 +6,6 @@ pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
 
     const wasm = b.addStaticLibrary("zig-wasm-assets", "src/main.zig");
-    deps.addAllTo(wasm);
     wasm.setBuildMode(mode);
     wasm.setOutputDir(b.fmt("{s}/www", .{b.install_prefix}));
     wasm.setTarget(.{

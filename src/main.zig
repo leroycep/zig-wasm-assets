@@ -1,19 +1,17 @@
 const std = @import("std");
-const zee_alloc = @import("zee_alloc");
 const env = @import("./env.zig");
 
 pub const log = env.log;
 pub const panic = env.panic;
 
-const allocator: *std.mem.Allocator = zee_alloc.ZeeAllocDefaults.wasm_allocator;
-comptime {
-    (zee_alloc.ExportC{
-        .allocator = allocator,
-        .malloc = true,
-        .free = true,
-        .realloc = false,
-        .calloc = false,
-    }).run();
+var gpa = std.heap.GeneralPurposeAllocator(.{.safety = false}){};
+const allocator: *std.mem.Allocator = &gpa.allocator;//zee_alloc.ZeeAllocDefaults.wasm_allocator;
+
+export fn malloc(bytes: usize) ?[*]u8 {
+    const a = allocator.alloc(u8, bytes) catch {
+        return null;
+    };
+    return a.ptr;
 }
 
 var loading_complete: bool = false;
@@ -62,9 +60,12 @@ fn load_text_files() !TextFiles {
     };
 }
 
-var reverse_frame: @Frame(reverse_file_internal) = undefined;
 export fn reverse_file(js_promise_id: usize, str_ptr: [*]const u8, str_len: usize) void {
-    reverse_frame = async reverse_file_internal(js_promise_id, str_ptr, str_len);
+    const reverse_frame = allocator.create(@Frame(reverse_file_internal)) catch |err| {
+        std.log.err("Couldn't allocate frame: {}", .{err});
+        return;
+    };
+    reverse_frame.* = async reverse_file_internal(js_promise_id, str_ptr, str_len);
 }
 
 fn reverse_file_internal(js_promise_id: usize, str_ptr: [*]const u8, str_len: usize) void {
